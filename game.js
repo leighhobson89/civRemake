@@ -1,4 +1,4 @@
-import {generateMap} from './mapGenerator.js';
+import { generateMap } from './mapGenerator.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
@@ -8,12 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    let tileSize = 7;
-    const initialTileSize = tileSize; // Save the initial tile size for zoom limits
+    const tileSize = 7; // Fixed tile size
     let mapWidth = Math.floor(canvas.width / tileSize);
     let mapHeight = Math.floor(canvas.height / tileSize);
     let gameState = 'menu'; // Initial state is 'menu'
     let map = null; // Initialize map as null
+    let movesCount = 0; // Counter to track number of moves
+    let turnPoints = 3; // Total turn points available per turn
+    let flashing = false; // Flag to control red pixel flashing
 
     const menu = document.createElement('div');
     menu.id = 'menu';
@@ -32,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (map === null) {
                     // Generate map only if it's the first time starting the game
                     map = generateMap(mapWidth, mapHeight);
+                    selectStartPosition();
                 }
                 gameState = 'game';
                 menu.style.display = 'none';
@@ -42,10 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Event listener to start the game directly
     buttons['Start Game'].addEventListener('click', () => {
         if (gameState === 'menu') {
             if (map === null) {
                 map = generateMap(mapWidth, mapHeight);
+                selectStartPosition();
             }
             gameState = 'game';
             menu.style.display = 'none';
@@ -54,97 +59,183 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Create zoom in/out buttons
-    const zoomInButton = document.createElement('button');
-    zoomInButton.innerText = '+';
-    zoomInButton.style.position = 'absolute';
-    zoomInButton.style.top = '10px';
-    zoomInButton.style.left = '10px';
-    document.body.appendChild(zoomInButton);
+    // Function to randomly select a starting position for the red pixel
+    function selectStartPosition() {
+        let startX, startY;
+        do {
+            startX = Math.floor(Math.random() * mapWidth);
+            startY = Math.floor(Math.random() * mapHeight);
+        } while (isMountainOrOcean(startY, startX));
 
-    const zoomOutButton = document.createElement('button');
-    zoomOutButton.innerText = '-';
-    zoomOutButton.style.position = 'absolute';
-    zoomOutButton.style.top = '50px';
-    zoomOutButton.style.left = '10px';
-    document.body.appendChild(zoomOutButton);
-
-    // Zoom in/out functionality with limits
-    const maxZoomInLevels = 5;
-    const maxTileSize = initialTileSize + maxZoomInLevels;
-    const minTileSize = initialTileSize;
-
-    zoomInButton.addEventListener('click', () => {
-        if (tileSize < maxTileSize) {
-            tileSize++;
-            updateMapDimensions();
-            renderGame();
-        }
-    });
-
-    zoomOutButton.addEventListener('click', () => {
-        if (tileSize > minTileSize) {
-            tileSize--;
-            updateMapDimensions();
-            renderGame();
-        }
-    });
-
-    // Update map dimensions based on tileSize
-    function updateMapDimensions() {
-        mapWidth = Math.floor(canvas.width / tileSize);
-        mapHeight = Math.floor(canvas.height / tileSize);
+        map.redPixelPosition = { x: startX, y: startY };
     }
 
+    // Event listener for keyboard input to move the red pixel
+    window.addEventListener('keydown', (event) => {
+        if (turnPoints === 0) {
+            console.log('Turn done');
+            return;
+        }
+
+        const { key } = event;
+        const { x, y } = map.redPixelPosition;
+        let moved = false; // Flag to check if movement occurred
+        let terrainCost = 0; // Cost of movement based on terrain type
+
+        // Determine terrain cost
+        switch (map[y][x]) {
+            case 'grassland':
+                terrainCost = 1;
+                break;
+            case 'plains':
+                terrainCost = 2;
+                break;
+            case 'forest':
+                terrainCost = 3;
+                break;
+            default:
+                terrainCost = 0; // No cost for other terrains
+                break;
+        }
+
+        switch (key) {
+            case 'Numpad8': // Up (Numpad 8)
+            case 'ArrowUp': // Additional control for Up arrow key
+                if (y > 0 && !isMountainOrOcean(y - 1, x)) {
+                    map.redPixelPosition.y = y - 1;
+                    console.log('Moved up');
+                    moved = true;
+                }
+                break;
+            case 'Numpad2': // Down (Numpad 2)
+            case 'ArrowDown': // Additional control for Down arrow key
+                if (y < mapHeight - 1 && !isMountainOrOcean(y + 1, x)) {
+                    map.redPixelPosition.y = y + 1;
+                    console.log('Moved down');
+                    moved = true;
+                }
+                break;
+            case 'Numpad4': // Left (Numpad 4)
+            case 'ArrowLeft': // Additional control for Left arrow key
+                if (x > 0 && !isMountainOrOcean(y, x - 1)) {
+                    map.redPixelPosition.x = x - 1;
+                    console.log('Moved left');
+                    moved = true;
+                }
+                break;
+            case 'Numpad6': // Right (Numpad 6)
+            case 'ArrowRight': // Additional control for Right arrow key
+                if (x < mapWidth - 1 && !isMountainOrOcean(y, x + 1)) {
+                    map.redPixelPosition.x = x + 1;
+                    console.log('Moved right');
+                    moved = true;
+                }
+                break;
+            case 'Numpad7': // Up and Left (Numpad 7) or Home
+            case 'Home':
+                if (y > 0 && x > 0 && !isMountainOrOcean(y - 1, x - 1)) {
+                    map.redPixelPosition.y = y - 1;
+                    map.redPixelPosition.x = x - 1;
+                    console.log('Moved up and left');
+                    moved = true;
+                }
+                break;
+            case 'Numpad9': // Up and Right (Numpad 9) or PageUp
+            case 'PageUp':
+                if (y > 0 && x < mapWidth - 1 && !isMountainOrOcean(y - 1, x + 1)) {
+                    map.redPixelPosition.y = y - 1;
+                    map.redPixelPosition.x = x + 1;
+                    console.log('Moved up and right');
+                    moved = true;
+                }
+                break;
+            case 'Numpad1': // Down and Left (Numpad 1) or End
+            case 'End':
+                if (y < mapHeight - 1 && x > 0 && !isMountainOrOcean(y + 1, x - 1)) {
+                    map.redPixelPosition.y = y + 1;
+                    map.redPixelPosition.x = x - 1;
+                    console.log('Moved down and left');
+                    moved = true;
+                }
+                break;
+            case 'Numpad3': // Down and Right (Numpad 3) or PageDown
+            case 'PageDown':
+                if (y < mapHeight - 1 && x < mapWidth - 1 && !isMountainOrOcean(y + 1, x + 1)) {
+                    map.redPixelPosition.y = y + 1;
+                    map.redPixelPosition.x = x + 1;
+                    console.log('Moved down and right');
+                    moved = true;
+                }
+                break;
+        }
+
+        if (moved) {
+            movesCount++;
+            turnPoints -= terrainCost; // Deduct turn points based on terrain cost
+
+            // Check if move exceeds the limit of 3 moves per turn or turn points are exhausted
+            if (movesCount === 3 || turnPoints === 0) {
+                console.log('Turn done');
+                movesCount = 0;
+                turnPoints = 3;
+            }
+
+            renderGame();
+        }
+    });
+
+    // Function to check if a given position is a mountain or ocean tile
+    function isMountainOrOcean(y, x) {
+        const tile = map[y][x];
+        return tile === "#0000FF" || tile === "#332e22" || tile === "#FFFFFF";
+    }
+
+    // Function to render the game
     function renderGame() {
         // Clear the canvas
         context.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Toggle flashing effect
+        flashing = !flashing;
+
         // Render the map if it exists
         if (map) {
-            for (let y = 0; y < mapHeight; y++) {
-                for (let x = 0; x < mapWidth; x++) {
+            for (let y = 0; y < map.length; y++) {
+                for (let x = 0; x < map[y].length; x++) {
                     context.fillStyle = map[y][x];
-                    context.fillRect(
-                        x * tileSize,
-                        y * tileSize,
-                        tileSize,
-                        tileSize
-                    );
+                    context.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                 }
+            }
+
+            // Flashing red pixel
+            if (flashing) {
+                const { x, y } = map.redPixelPosition;
+                context.fillStyle = '#FF0000'; // Red color
+                context.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
             }
         }
     }
 
-    function gameLoop() {
-        if (gameState === 'game') {
-            // Game logic update (if any) can go here
-            renderGame();
-        }
+    // Flash the red pixel every second
+    setInterval(renderGame, 1000);
 
-        requestAnimationFrame(gameLoop);
-    }
-
-    // Start the game loop
-    requestAnimationFrame(gameLoop);
-
-    // Handle window resize
+    // Event listener for window resize
     window.addEventListener('resize', () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        updateMapDimensions();
-        if (gameState === 'game') {
-            renderGame();
-        }
+        mapWidth = Math.floor(canvas.width / tileSize); // Update mapWidth based on tileSize
+        mapHeight = Math.floor(canvas.height / tileSize); // Update mapHeight based on tileSize
+        renderGame(); // Re-render the game on window resize
     });
 
-    // Event listener to switch to menu state when Escape is pressed
+    // Event listener to switch to menu state when Escape key is pressed
     window.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && gameState === 'game') {
-            gameState = 'menu';
-            menu.style.display = 'flex';
-            context.clearRect(0, 0, canvas.width, canvas.height);
+            gameState = 'menu'; // Switch game state to menu
+            menu.style.display = 'flex'; // Display the menu
+            context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
             console.log(`Game state changed to: ${gameState}`);
         }
     });
 });
+

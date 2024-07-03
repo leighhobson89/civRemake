@@ -116,5 +116,14 @@ export function generateMap(width, height) {
     addForestTerrain(forestStart1, forestEnd1);
     addForestTerrain(forestStart2, forestEnd2);
 
+    // Initialize red pixel position randomly within map bounds
+    const redPixelPosition = {
+        x: Math.floor(Math.random() * width),
+        y: Math.floor(Math.random() * height)
+    };
+
+    // Store red pixel position in map array
+    map.redPixelPosition = redPixelPosition;
+
     return map;
 }
