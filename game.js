@@ -1,4 +1,4 @@
-import { generateMap, renderMap } from './mapGenerator.js';
+import {generateMap} from './mapGenerator.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create buttons
     const buttonLabels = ['Start Game', 'Options', 'Help', 'Credits', 'Load Game', 'Quit'];
     const buttons = {};
-    buttonLabels.forEach((label, index) => {
+    buttonLabels.forEach((label) => {
         const button = document.createElement('button');
         button.innerText = label;
         menu.appendChild(button);
@@ -104,8 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (map) {
             for (let y = 0; y < mapHeight; y++) {
                 for (let x = 0; x < mapWidth; x++) {
-                    const tileColor = map[y][x];
-                    context.fillStyle = tileColor;
+                    context.fillStyle = map[y][x];
                     context.fillRect(
                         x * tileSize,
                         y * tileSize,

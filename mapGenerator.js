@@ -23,6 +23,21 @@ export function generateMap(width, height) {
     let maxForestProbability = 0.5; // Maximum probability for forest
     let minForestProbability = 0.1; // Minimum probability for forest
 
+    // Function to add forest terrain in the specified rows with inverted fading probability
+    function addForestTerrain(startY, endY) {
+        for (let y = startY; y <= endY; y++) {
+            const distanceFromEdge = Math.abs((y - startY) - (endY - startY) / 2);
+            const invertedDistance = (endY - startY) / 2 - distanceFromEdge;
+            const forestProbability = minForestProbability + (invertedDistance / ((endY - startY) / 2)) * (maxForestProbability - minForestProbability);
+            for (let x = 0; x < width; x++) {
+                if (map[y][x] !== terrainColors[0] && map[y][x] !== terrainColors[2] && map[y][x] !== terrainColors[3] && map[y][x] !== tundraColor && Math.random() < forestProbability) {
+                    map[y][x] = forestColor; // Replace non-ocean, non-mountain, non-peaks, and non-tundra terrain with forest
+                }
+            }
+        }
+    }
+
+    // Generate initial terrain map
     for (let y = 0; y < height; y++) {
         const row = [];
         for (let x = 0; x < width; x++) {
@@ -97,38 +112,9 @@ export function generateMap(width, height) {
         }
     }
 
-    // Add forest terrain in the specified rows with inverted fading probability, excluding ocean, mountain, and peaks tiles
-    for (let y = forestStart1; y <= forestEnd1; y++) {
-        const distanceFromEdge = Math.abs((y - forestStart1) - (forestEnd1 - forestStart1) / 2);
-        const invertedDistance = (forestEnd1 - forestStart1) / 2 - distanceFromEdge;
-        const forestProbability = minForestProbability + (invertedDistance / ((forestEnd1 - forestStart1) / 2)) * (maxForestProbability - minForestProbability);
-        for (let x = 0; x < width; x++) {
-            if (map[y][x] !== terrainColors[0] && map[y][x] !== terrainColors[2] && map[y][x] !== terrainColors[3] && map[y][x] !== tundraColor && Math.random() < forestProbability) {
-                map[y][x] = forestColor; // Replace non-ocean, non-mountain, non-peaks, and non-tundra terrain with forest
-            }
-        }
-    }
-
-    for (let y = forestStart2; y <= forestEnd2; y++) {
-        const distanceFromEdge = Math.abs((y - forestStart2) - (forestEnd2 - forestStart2) / 2);
-        const invertedDistance = (forestEnd2 - forestStart2) / 2 - distanceFromEdge;
-        const forestProbability = minForestProbability + (invertedDistance / ((forestEnd2 - forestStart2) / 2)) * (maxForestProbability - minForestProbability);
-        for (let x = 0; x < width; x++) {
-            if (map[y][x] !== terrainColors[0] && map[y][x] !== terrainColors[2] && map[y][x] !== terrainColors[3] && map[y][x] !== tundraColor && Math.random() < forestProbability) {
-                map[y][x] = forestColor; // Replace non-ocean, non-mountain, non-peaks, and non-tundra terrain with forest
-            }
-        }
-    }
+    // Add forest terrain using the defined function
+    addForestTerrain(forestStart1, forestEnd1);
+    addForestTerrain(forestStart2, forestEnd2);
 
     return map;
-}
-
-// Render the map on the canvas
-export function renderMap(context, map, tileSize) {
-    for (let y = 0; y < map.length; y++) {
-        for (let x = 0; x < map[y].length; x++) {
-            context.fillStyle = map[y][x];
-            context.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-        }
-    }
 }
