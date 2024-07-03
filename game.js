@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const tileSize = 5;
+    let tileSize = 7;
+    const initialTileSize = tileSize; // Save the initial tile size for zoom limits
     let mapWidth = Math.floor(canvas.width / tileSize);
     let mapHeight = Math.floor(canvas.height / tileSize);
     let gameState = 'menu'; // Initial state is 'menu'
@@ -30,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (label === 'Start Game') {
                 if (map === null) {
                     // Generate map only if it's the first time starting the game
-                    map = generateMap(mapWidth, mapHeight, tileSize);
+                    map = generateMap(mapWidth, mapHeight);
                 }
                 gameState = 'game';
                 menu.style.display = 'none';
@@ -44,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons['Start Game'].addEventListener('click', () => {
         if (gameState === 'menu') {
             if (map === null) {
-                map = generateMap(mapWidth, mapHeight, tileSize);
+                map = generateMap(mapWidth, mapHeight);
             }
             gameState = 'game';
             menu.style.display = 'none';
@@ -53,13 +54,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Create zoom in/out buttons
+    const zoomInButton = document.createElement('button');
+    zoomInButton.innerText = '+';
+    zoomInButton.style.position = 'absolute';
+    zoomInButton.style.top = '10px';
+    zoomInButton.style.left = '10px';
+    document.body.appendChild(zoomInButton);
+
+    const zoomOutButton = document.createElement('button');
+    zoomOutButton.innerText = '-';
+    zoomOutButton.style.position = 'absolute';
+    zoomOutButton.style.top = '50px';
+    zoomOutButton.style.left = '10px';
+    document.body.appendChild(zoomOutButton);
+
+    // Zoom in/out functionality with limits
+    const maxZoomInLevels = 5;
+    const maxTileSize = initialTileSize + maxZoomInLevels;
+    const minTileSize = initialTileSize;
+
+    zoomInButton.addEventListener('click', () => {
+        if (tileSize < maxTileSize) {
+            tileSize++;
+            updateMapDimensions();
+            renderGame();
+        }
+    });
+
+    zoomOutButton.addEventListener('click', () => {
+        if (tileSize > minTileSize) {
+            tileSize--;
+            updateMapDimensions();
+            renderGame();
+        }
+    });
+
+    // Update map dimensions based on tileSize
+    function updateMapDimensions() {
+        mapWidth = Math.floor(canvas.width / tileSize);
+        mapHeight = Math.floor(canvas.height / tileSize);
+    }
+
     function renderGame() {
         // Clear the canvas
         context.clearRect(0, 0, canvas.width, canvas.height);
 
         // Render the map if it exists
         if (map) {
-            renderMap(context, map, tileSize);
+            for (let y = 0; y < mapHeight; y++) {
+                for (let x = 0; x < mapWidth; x++) {
+                    const tileColor = map[y][x];
+                    context.fillStyle = tileColor;
+                    context.fillRect(
+                        x * tileSize,
+                        y * tileSize,
+                        tileSize,
+                        tileSize
+                    );
+                }
+            }
         }
     }
 
@@ -79,8 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        mapWidth = Math.floor(canvas.width / tileSize);
-        mapHeight = Math.floor(canvas.height / tileSize);
+        updateMapDimensions();
         if (gameState === 'game') {
             renderGame();
         }
