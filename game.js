@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const tileSize = 50;
+    const tileSize = 5;
     let mapWidth = Math.floor(canvas.width / tileSize);
     let mapHeight = Math.floor(canvas.height / tileSize);
     let gameState = 'menu'; // Initial state is 'menu'

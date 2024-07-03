@@ -1,74 +1,86 @@
-// mapGenerator.js
-
-// Import SimplexNoise from the specific path to the module
-import SimplexNoise from './node_modules/simplex-noise/dist/esm/simplex-noise.js'; // Adjust the path as needed
-
-// Helper function to generate a random integer within a range
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-// Generate a map with continents, oceans, and varying terrain based on latitude
-export function generateMap(width, height, tileSize) {
+// Generate a map with random noise for terrain types
+export function generateMap(width, height) {
     const map = [];
-    const terrainTypes = ['#808080', '#0000FF', '#008000', '#FFFF00', '#FFFFFF']; // Grey, Blue, Green, Yellow, White
-    const oceanColor = '#0000FF'; // Blue
+    const terrainColors = ['#0000FF', '#008000', '#808080']; // Blue (Ocean), Green (Grassland), Grey (Mountain)
     const tundraColor = '#FFFFFF'; // White
-    const grasslandColor = '#008000'; // Green
-    const plainsColor = '#FFFF00'; // Yellow
+    const plainsColor = '#FFFF00'; // Yellow (Plains)
 
-    const oceanThreshold = 0.3; // Percentage of the map that will be ocean
-    const tundraThreshold = 0.1; // Percentage of the map that will be tundra (polar regions)
-    const grasslandThreshold = 0.5; // Percentage of the map that will be grassland (mid-latitudes)
-    // The rest will be plains (equatorial regions)
+    const noise = new SimplexNoise(); // Create an instance of SimplexNoise
 
-    // Generate map with ocean initially
+    // Calculate fading probability for speckled tundra
+    let maxTundraProbability = 1; // Maximum probability at the edges
+
+    // Calculate fading probability for plains
+    const startingPlainsProbability = 0.1; // Maximum probability at the edges (30%)
+
     for (let y = 0; y < height; y++) {
         const row = [];
         for (let x = 0; x < width; x++) {
-            row.push(oceanColor);
+            if (y < 3 || y >= height - 3) {
+                // Set first 3 rows and last 3 rows to tundra
+                row.push(tundraColor);
+            } else {
+                // Calculate noise value for terrain generation
+                const noiseValue = noise.noise2D(x / 50, y / 50); // Adjust frequency for different terrain sizes
+
+                // Normalize noise value to 0-1
+                const normalizedValue = (noiseValue + 1) / 2;
+
+                // Determine terrain type based on normalized noise value
+                let terrainIndex;
+                if (normalizedValue < 0.5) {
+                    terrainIndex = 0; // Ocean
+                } else if (normalizedValue < 0.9) {
+                    terrainIndex = 1; // Grassland
+                } else {
+                    terrainIndex = 2; // Mountain
+                }
+
+                row.push(terrainColors[terrainIndex]);
+            }
         }
         map.push(row);
     }
 
-    // Define latitude thresholds
-    const tundraStart = Math.floor(height * tundraThreshold);
-    const grasslandStart = Math.floor(height * grasslandThreshold);
-
-    // Generate continents using Perlin noise for more natural shapes
-    const noise = new SimplexNoise(); // You can use a noise library like SimplexNoise
-
-    for (let y = tundraStart; y < height - tundraStart; y++) {
+    // Add speckled tundra effect in the specified rows with fading probability
+    for (let y = 3; y <= 15; y++) {
+        const tundraProbability = maxTundraProbability;
         for (let x = 0; x < width; x++) {
-            // Calculate noise value for continent generation
-            const noiseValue = noise.createNoise2D(x / 50, y / 50); // Adjust frequency for different continent sizes
-
-            // Adjust threshold for more or less continent coverage
-            if (noiseValue > -0.2) {
-                map[y][x] = terrainTypes[getRandomInt(1, 4)]; // Randomly assign grassland, plains, or mountains
+            if (Math.random() < tundraProbability) {
+                map[y][x] = tundraColor; // Replace any terrain with tundra
             }
         }
+        maxTundraProbability = maxTundraProbability - 0.08;
     }
 
-    // Add tundra and plains based on latitude
-    for (let y = 0; y < tundraStart; y++) {
+    for (let y = height - 15; y < height - 3; y++) {
+        const tundraProbability = maxTundraProbability;
         for (let x = 0; x < width; x++) {
-            map[y][x] = tundraColor; // Set top of the map (north pole) to tundra
-            map[height - 1 - y][x] = tundraColor; // Set bottom of the map (south pole) to tundra
+            if (Math.random() < tundraProbability) {
+                map[y][x] = tundraColor; // Replace any terrain with tundra
+            }
         }
+        maxTundraProbability = maxTundraProbability + 0.08;
     }
 
-    // Add grasslands in between
-    for (let y = tundraStart; y < grasslandStart; y++) {
-        for (let x = 0; x < width; x++) {
-            map[y][x] = grasslandColor;
+    // Add plains after initial generation with a probability on grassland tiles in the 30% above and below center
+    const centerStart = Math.floor(height * 0.35); // 35% from the top
+    const centerEnd = Math.floor(height * 0.65); // 65% from the top
+
+    const centerMidpoint = (centerStart + centerEnd) / 2;
+
+    let plainsCenterProbability = startingPlainsProbability;
+    for (let y = centerStart; y <= centerEnd; y++) {
+
+        if (y < centerMidpoint) {
+            plainsCenterProbability = plainsCenterProbability + 0.015;
+        } else {
+            plainsCenterProbability = plainsCenterProbability - 0.015;
         }
-    }
-
-    // Add plains in the middle (equatorial regions)
-    for (let y = grasslandStart; y < height - grasslandStart; y++) {
         for (let x = 0; x < width; x++) {
-            map[y][x] = plainsColor;
+            if (map[y][x] === terrainColors[1] && Math.random() < plainsCenterProbability) {
+                map[y][x] = plainsColor; // Convert grassland to plains
+            }
         }
     }
 
